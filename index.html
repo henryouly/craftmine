@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Craftmine</title>
+  </head>
+  <body>
+    <canvas id="game"></canvas>
+    <div id="hud"><div id="debug"></div></div>
+    <div id="crosshair">+</div>
+    <div id="hotbar"></div>
+    <div id="help" class="hidden"></div>
+    <div id="startOverlay" class="overlay">
+      <div class="card"><h1>Craftmine</h1><button id="playBtn">Play</button></div>
+    </div>
+    <div id="pauseOverlay" class="overlay hidden">
+      <div class="card">
+        <h1>Paused</h1>
+        <button id="resumeBtn">Resume</button>
+        <label>Seed <input id="seedInput" type="number" value="1337" /></label>
+        <button id="regenBtn">Regenerate</button>
+        <button id="exportBtn">Export JSON</button>
+        <label class="file">Import JSON <input id="importInput" type="file" accept="application/json" /></label>
+        <button id="clearBtn">Clear Save</button>
+        <label>Sensitivity <input id="sensInput" type="range" min="0.0005" max="0.01" step="0.0005" value="0.0025" /></label>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
