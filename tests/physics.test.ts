@@ -47,4 +47,18 @@ describe('collide', () => {
     expect(r.pos.y + PLAYER_HEIGHT).toBeLessThanOrEqual(5.001);
     expect(r.onGround).toBe(false);
   });
+
+  it('world edges act as walls on x', () => {
+    const s = new VoxelStore(16, 16, 16);
+    const r = collide(s, { x: 15.5, y: 5, z: 8.5 }, { x: 12, y: 0, z: 0 }, 0.5);
+    expect(r.pos.x).toBeLessThanOrEqual(16 - HALF_WIDTH + 1e-6);
+    expect(r.vel.x).toBe(0);
+  });
+
+  it('world edges act as walls on z', () => {
+    const s = new VoxelStore(16, 16, 16);
+    const r = collide(s, { x: 8.5, y: 5, z: 0.5 }, { x: 0, y: 0, z: -12 }, 0.5);
+    expect(r.pos.z).toBeGreaterThanOrEqual(HALF_WIDTH - 1e-6);
+    expect(r.vel.z).toBe(0);
+  });
 });

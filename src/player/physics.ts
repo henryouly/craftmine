@@ -111,6 +111,26 @@ export function collide(
     vz = 0;
   }
 
+  // World-edge walls: keep the AABB on the plane (walk + fly).
+  const minX = halfW;
+  const maxX = store.sx - halfW;
+  if (px < minX) {
+    px = minX;
+    vx = 0;
+  } else if (px > maxX) {
+    px = maxX;
+    vx = 0;
+  }
+  const minZ = halfW;
+  const maxZ = store.sz - halfW;
+  if (pz < minZ) {
+    pz = minZ;
+    vz = 0;
+  } else if (pz > maxZ) {
+    pz = maxZ;
+    vz = 0;
+  }
+
   return {
     pos: { x: px, y: py, z: pz },
     vel: { x: vx, y: vy, z: vz },
