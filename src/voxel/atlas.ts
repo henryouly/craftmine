@@ -255,6 +255,25 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
+// Vanilla grass/leaves textures ship grayscale; the game tints them per-biome.
+// We bake the plains tint (#91BD59) into the atlas at load.
+const GRASS_TINT: RGB = [145, 189, 89];
+
+function tintTile(ctx: CanvasRenderingContext2D, tile: number, tint: RGB): void {
+  const ox = (tile % ATLAS_COLS) * TILE_SIZE;
+  const oy = Math.floor(tile / ATLAS_COLS) * TILE_SIZE;
+  const img = ctx.getImageData(ox, oy, TILE_SIZE, TILE_SIZE);
+  const d = img.data;
+  const [tr, tg, tb] = tint;
+  for (let i = 0; i < d.length; i += 4) {
+    if (d[i + 3] === 0) continue; // keep cutout holes transparent
+    d[i] = Math.round((d[i] / 255) * tr);
+    d[i + 1] = Math.round((d[i + 1] / 255) * tg);
+    d[i + 2] = Math.round((d[i + 2] / 255) * tb);
+  }
+  ctx.putImageData(img, ox, oy);
+}
+
 /**
  * Build the atlas canvas from the real texture pack PNGs.
  * Each source is drawn scaled to 16x16 into its tile slot.
@@ -278,6 +297,11 @@ export async function makeAtlasTextureFromPack(): Promise<THREE.CanvasTexture> {
       ctx.drawImage(img, ox, oy, TILE_SIZE, TILE_SIZE);
     }),
   );
+
+  // grass_block_top.png and oak_leaves.png are grayscale in the pack;
+  // tint them (grass_block_side.png already ships pre-tinted).
+  tintTile(ctx, TILES.grass_top, GRASS_TINT);
+  tintTile(ctx, TILES.leaves, GRASS_TINT);
 
   const tex = new THREE.CanvasTexture(canvas);
   tex.magFilter = THREE.NearestFilter;
