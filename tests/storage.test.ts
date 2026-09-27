@@ -52,4 +52,11 @@ describe('parseSave', () => {
     expect(parseSave(JSON.stringify({ seed: 1, diff: { '5': 'brick' } }))).toBeNull();
     expect(parseSave(JSON.stringify({ seed: 1, diff: { '5': 999 } }))).toBeNull();
   });
+
+  it('roundtrips optional clock time', () => {
+    expect(parseSave(JSON.stringify({ seed: 1, diff: {}, time: 0.5 }))?.time).toBe(0.5);
+    expect(parseSave(JSON.stringify({ seed: 1, diff: {} }))?.time).toBeUndefined();
+    expect(parseSave(JSON.stringify({ seed: 1, diff: {}, time: 1.5 }))).toBeNull();
+    expect(parseSave(JSON.stringify({ seed: 1, diff: {}, time: 'noon' }))).toBeNull();
+  });
 });

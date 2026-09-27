@@ -10,6 +10,8 @@ export interface SaveData {
   seed: number;
   /** Sparse voxel diff: linear buffer index (as string) -> block id. */
   diff: Record<string, number>;
+  /** Day/night clock in [0,1). Optional for backward compatibility. */
+  time?: number;
 }
 
 /** Byte-compare base vs edited; every differing cell becomes a diff entry. */
@@ -42,7 +44,7 @@ export function parseSave(text: string): SaveData | null {
     return null;
   }
   if (typeof raw !== 'object' || raw === null) return null;
-  const { seed, diff } = raw as { seed?: unknown; diff?: unknown };
+  const { seed, diff, time } = raw as { seed?: unknown; diff?: unknown; time?: unknown };
   if (typeof seed !== 'number' || !Number.isFinite(seed)) return null;
   if (typeof diff !== 'object' || diff === null) return null;
   const clean: Record<string, number> = {};
@@ -51,7 +53,16 @@ export function parseSave(text: string): SaveData | null {
     if (typeof v !== 'number' || !Number.isInteger(v) || v < 0 || v > 255) return null;
     clean[k] = v;
   }
-  return { seed: Math.floor(seed), diff: clean };
+  let cleanTime: number | undefined;
+  if (time !== undefined) {
+    if (typeof time !== 'number' || !Number.isFinite(time) || time < 0 || time >= 1) {
+      return null;
+    }
+    cleanTime = time;
+  }
+  return cleanTime === undefined
+    ? { seed: Math.floor(seed), diff: clean }
+    : { seed: Math.floor(seed), diff: clean, time: cleanTime };
 }
 
 function storage(): Storage | null {
@@ -68,12 +79,20 @@ function storage(): Storage | null {
  * generate(seed) snapshot) when provided; otherwise a fresh generate(seed)
  * is used (~60ms, fine on a 1s debounce).
  */
-export function saveGame(seed: number, edited: VoxelStore, base?: VoxelStore): void {
+export function saveGame(
+  seed: number,
+  edited: VoxelStore,
+  base?: VoxelStore,
+  time?: number,
+): void {
   const store = storage();
   if (!store) return;
   try {
     const ref = base ?? generate(seed);
-    const data: SaveData = { seed, diff: collectDiff(ref, edited) };
+    const data: SaveData =
+      time === undefined
+        ? { seed, diff: collectDiff(ref, edited) }
+        : { seed, diff: collectDiff(ref, edited), time };
     store.setItem(SAVE_KEY, JSON.stringify(data));
   } catch {
     // Storage full/unavailable: game continues without persistence.

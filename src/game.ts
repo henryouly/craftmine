@@ -16,6 +16,13 @@ import {
   parseSave,
   saveGame,
 } from './save/storage';
+import {
+  advanceTime,
+  formatTime,
+  normalizeTime,
+  sampleDayNight,
+  timeGlyph,
+} from './world/daynight';
 
 export const REACH = 8;
 export const REPEAT_MS = 200;
@@ -34,6 +41,10 @@ export interface World {
   selectedBlock: number;
   /** Regenerate terrain from a seed, rebuild chunks, respawn the player. */
   regen: (seed: number) => void;
+  /** Day/night clock controls (wired to the pause menu). */
+  getTime: () => number;
+  setTime: (t: number) => void;
+  setCyclePaused: (paused: boolean) => void;
 }
 
 let world: World | null = null;
@@ -110,14 +121,15 @@ function groundHeight(store: VoxelStore, x: number, z: number): number {
 
 export async function startGame(canvas: HTMLCanvasElement): Promise<World> {
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x87ceeb);
-  scene.fog = new THREE.Fog(0x87ceeb, 60, 180);
+  const bg = new THREE.Color(0x87ceeb);
+  scene.background = bg;
+  const fog = new THREE.Fog(0x87ceeb, 60, 180);
+  scene.fog = fog;
 
-  // Static noon lighting.
+  // Day/night lighting: orbit + colors driven per-frame by the clock.
   const hemi = new THREE.HemisphereLight(0xbfd9ff, 0x8a7a5a, 0.9);
   scene.add(hemi);
   const sun = new THREE.DirectionalLight(0xffffff, 1.1);
-  sun.position.set(64 + 40, 100, 64 + 20);
   sun.target.position.set(64, 0, 64);
   scene.add(sun);
   scene.add(sun.target);
@@ -147,6 +159,9 @@ export async function startGame(canvas: HTMLCanvasElement): Promise<World> {
 
   const saved = loadGame();
   const seed = saved?.seed ?? 1337;
+  // Day/night clock: resume saved time, otherwise start in the morning.
+  let timeOfDay = normalizeTime(saved?.time ?? 0.1);
+  let cyclePaused = false;
   const store = generate(seed);
   // Pristine snapshot for diff-based saves. Edits only touch `store`,
   // so diffing against this stays correct between regens.
@@ -206,6 +221,13 @@ export async function startGame(canvas: HTMLCanvasElement): Promise<World> {
     seed,
     player,
     selectedBlock: 1,
+    getTime: () => timeOfDay,
+    setTime: (t: number) => {
+      timeOfDay = normalizeTime(t);
+    },
+    setCyclePaused: (paused: boolean) => {
+      cyclePaused = paused;
+    },
     regen: (nextSeed: number) => {
       const fresh = generate(nextSeed);
       store.data.set(fresh.data);
@@ -215,17 +237,21 @@ export async function startGame(canvas: HTMLCanvasElement): Promise<World> {
       const gh = groundHeight(store, 64, 64);
       player.pos.set(64.5, gh + 2.5, 64.5);
       player.vel.set(0, 0, 0);
-      saveGame(w.seed, store, base);
+      saveGame(w.seed, store, base, timeOfDay);
       dirtySinceSave = false;
       lastSaveAt = performance.now();
     },
   };
 
   window.addEventListener('craftmine:export', () => {
-    saveGame(w.seed, store, base);
+    saveGame(w.seed, store, base, timeOfDay);
     dirtySinceSave = false;
     lastSaveAt = performance.now();
-    const payload = JSON.stringify({ seed: w.seed, diff: collectDiff(base, store) });
+    const payload = JSON.stringify({
+      seed: w.seed,
+      diff: collectDiff(base, store),
+      time: timeOfDay,
+    });
     const blob = new Blob([payload], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -239,6 +265,7 @@ export async function startGame(canvas: HTMLCanvasElement): Promise<World> {
     if (typeof text !== 'string') return;
     const parsed = parseSave(text);
     if (!parsed) return;
+    timeOfDay = normalizeTime(parsed.time ?? timeOfDay);
     const fresh = generate(parsed.seed);
     store.data.set(fresh.data);
     applyDiff(store, parsed.diff);
@@ -248,12 +275,23 @@ export async function startGame(canvas: HTMLCanvasElement): Promise<World> {
     const gh = groundHeight(store, 64, 64);
     player.pos.set(64.5, gh + 2.5, 64.5);
     player.vel.set(0, 0, 0);
-    saveGame(w.seed, store, base);
+    saveGame(w.seed, store, base, timeOfDay);
     dirtySinceSave = false;
     lastSaveAt = performance.now();
   }) as EventListener);
+  window.addEventListener('craftmine:set-time', ((e: Event) => {
+    const t = (e as CustomEvent<number>).detail;
+    if (typeof t === 'number') {
+      timeOfDay = normalizeTime(t);
+      saveGame(w.seed, store, base, timeOfDay);
+    }
+  }) as EventListener);
+  window.addEventListener('craftmine:toggle-cycle', ((e: Event) => {
+    const paused = (e as CustomEvent<boolean>).detail;
+    if (typeof paused === 'boolean') cyclePaused = paused;
+  }) as EventListener);
   window.addEventListener('beforeunload', () => {
-    if (dirtySinceSave) saveGame(w.seed, store, base);
+    if (dirtySinceSave) saveGame(w.seed, store, base, timeOfDay);
   });
 
   initHotbar();
@@ -366,10 +404,30 @@ export async function startGame(canvas: HTMLCanvasElement): Promise<World> {
     }
 
     // Debounced autosave: at most once per second, only after edits.
+    // (Clock time is saved on set-time events, so the 1s loop skips it.)
     if (dirtySinceSave && now - lastSaveAt > 1000) {
-      saveGame(w.seed, store, base);
+      saveGame(w.seed, store, base, timeOfDay);
       dirtySinceSave = false;
       lastSaveAt = now;
+    }
+
+    // Day/night: advance the clock and drive sun + sky.
+    if (!cyclePaused) timeOfDay = advanceTime(timeOfDay, dt * 1000);
+    {
+      const s = sampleDayNight(timeOfDay);
+      // π/2 phase: sunrise east-horizon, noon overhead, sunset west-horizon.
+      const orbit = (timeOfDay - 0.25) * Math.PI * 2 + Math.PI / 2;
+      sun.position.set(
+        64 + Math.cos(orbit) * 90,
+        // Clamp above the horizon: at night the dim light reads as moonlight.
+        Math.max(8, Math.sin(orbit) * 90 + 10),
+        64 + 20,
+      );
+      sun.intensity = s.sunIntensity;
+      sun.color.setRGB(s.sunColor[0] / 255, s.sunColor[1] / 255, s.sunColor[2] / 255);
+      hemi.intensity = s.hemiIntensity;
+      bg.setRGB(s.sky[0] / 255, s.sky[1] / 255, s.sky[2] / 255);
+      fog.color.copy(bg);
     }
 
     // Apply any pending chunk remeshes (no-ops until edits exist).
@@ -384,7 +442,7 @@ export async function startGame(canvas: HTMLCanvasElement): Promise<World> {
       if (debugEl) {
         const p = player.pos;
         debugEl.textContent =
-          `${fps.toFixed(0)} fps | ${p.x.toFixed(1)} ${p.y.toFixed(1)} ${p.z.toFixed(1)}`;
+          `${fps.toFixed(0)} fps | ${p.x.toFixed(1)} ${p.y.toFixed(1)} ${p.z.toFixed(1)} | ${timeGlyph(timeOfDay)} ${formatTime(timeOfDay)}`;
       }
     }
   }

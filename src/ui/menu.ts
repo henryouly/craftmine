@@ -47,8 +47,10 @@ export function initMenu(world: World): void {
 <button id="regenBtn">Regenerate</button>
 <button id="exportBtn">Export JSON</button>
 <label class="file">Import JSON <input id="importInput" type="file" accept="application/json" /></label>
-<button id="clearBtn">Clear Save</button>
+ <button id="clearBtn">Clear Save</button>
 <label>Sensitivity <input id="sensInput" type="range" min="0.0005" max="0.01" step="0.0005" value="0.0025" /></label>
+<label>Time <button id="noonBtn">Noon</button> <button id="sunsetBtn">Sunset</button> <button id="midnightBtn">Mid</button></label>
+<label><input id="cycleBox" type="checkbox" checked /> Day/night cycle</label>
 </div>`;
     document.body.appendChild(pause);
   }
@@ -63,6 +65,10 @@ export function initMenu(world: World): void {
   const importInput = document.getElementById('importInput') as HTMLInputElement | null;
   const clearBtn = document.getElementById('clearBtn');
   const sensInput = document.getElementById('sensInput') as HTMLInputElement | null;
+  const noonBtn = document.getElementById('noonBtn');
+  const sunsetBtn = document.getElementById('sunsetBtn');
+  const midnightBtn = document.getElementById('midnightBtn');
+  const cycleBox = document.getElementById('cycleBox') as HTMLInputElement | null;
 
   playBtn?.addEventListener('click', () => {
     startEl.classList.add('hidden');
@@ -94,6 +100,17 @@ export function initMenu(world: World): void {
   sensInput?.addEventListener('input', () => {
     const v = Number(sensInput.value);
     if (Number.isFinite(v)) setSensitivity(v);
+  });
+  const setTime = (t: number): void => {
+    window.dispatchEvent(new CustomEvent('craftmine:set-time', { detail: t }));
+  };
+  noonBtn?.addEventListener('click', () => setTime(0.25));
+  sunsetBtn?.addEventListener('click', () => setTime(0.5));
+  midnightBtn?.addEventListener('click', () => setTime(0.75));
+  cycleBox?.addEventListener('change', () => {
+    window.dispatchEvent(
+      new CustomEvent('craftmine:toggle-cycle', { detail: !cycleBox.checked }),
+    );
   });
 
   // Esc unlock shows pause; re-lock hides menus.
