@@ -37,6 +37,9 @@ describe('daynight', () => {
       expect(c).toBeLessThanOrEqual(255);
     }
     expect(noon).not.toEqual(night);
+    // Vanilla values: plains noon #78A7FF, midnight pure black.
+    expect(noon.map(Math.round)).toEqual([120, 167, 255]);
+    expect(night.map(Math.round)).toEqual([0, 0, 0]);
     // No NaNs anywhere on the dial.
     for (let i = 0; i < 24; i++) {
       const s = sampleDayNight(i / 24);

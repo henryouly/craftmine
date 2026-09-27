@@ -27,18 +27,16 @@ export function daylight(t: number): number {
 
 export type RGB = [number, number, number];
 
-/** Keyframed sky colors (0-255). */
-const SKY_KEYS: Array<[number, RGB]> = [
-  [0.0, [217, 160, 107]], // sunrise
-  [0.08, [135, 206, 235]], // morning -> noon blue
-  [0.25, [135, 206, 235]], // noon
-  [0.42, [135, 206, 235]], // afternoon
-  [0.5, [224, 138, 90]], // sunset
-  [0.58, [58, 74, 122]], // dusk blue
-  [0.7, [11, 16, 38]], // night
-  [0.8, [11, 16, 38]], // night
-  [0.92, [42, 58, 102]], // pre-dawn
-];
+/**
+ * Vanilla-style sky, matching Java Edition behavior:
+ * - Day = biome color (plains #78A7FF), night = pure #000000.
+ * - Brightness = clamp(elev * 2 + 0.5, 0, 1), i.e. the classic
+ *   cos(angle) * 2 + 0.5 darkening toward black at night.
+ * - Warm wash near the horizon approximates the sunrise/sunset glow,
+ *   which in vanilla fades between the biome color and orange.
+ */
+const PLAINS_DAY: RGB = [120, 167, 255]; // #78A7FF
+const SUNSET_WASH: RGB = [255, 150, 80];
 
 function lerp(a: number, b: number, f: number): number {
   return a + (b - a) * f;
@@ -48,18 +46,17 @@ function lerpRGB(a: RGB, b: RGB, f: number): RGB {
   return [lerp(a[0], b[0], f), lerp(a[1], b[1], f), lerp(a[2], b[2], f)];
 }
 
+function scaleRGB(c: RGB, f: number): RGB {
+  return [c[0] * f, c[1] * f, c[2] * f];
+}
+
 export function skyColor(t: number): RGB {
   const n = normalizeTime(t);
-  const keys = [...SKY_KEYS, [1.0, SKY_KEYS[0][1]] as [number, RGB]];
-  for (let i = 0; i < keys.length - 1; i++) {
-    const [t0, c0] = keys[i];
-    const [t1, c1] = keys[i + 1];
-    if (n >= t0 && n <= t1) {
-      const f = t1 === t0 ? 0 : (n - t0) / (t1 - t0);
-      return lerpRGB(c0, c1, f);
-    }
-  }
-  return SKY_KEYS[0][1];
+  const e = sunElevation(n);
+  const bright = Math.min(1, Math.max(0, e * 2 + 0.5));
+  const wash = Math.min(1, Math.max(0, 1 - Math.abs(e) / 0.4));
+  const base = scaleRGB(PLAINS_DAY, bright);
+  return lerpRGB(base, SUNSET_WASH, wash * 0.55);
 }
 
 export interface DayNightSample {
