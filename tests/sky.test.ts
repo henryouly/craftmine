@@ -14,7 +14,8 @@ describe('sky', () => {
   it('stars only at night', () => {
     expect(starAlpha(0.25)).toBe(0); // noon
     expect(starAlpha(0.75)).toBe(1); // midnight
-    expect(starAlpha(0)).toBeLessThan(0.5); // sunrise, mostly out
+    expect(starAlpha(0)).toBeLessThan(1); // sunrise, fading
+    expect(starAlpha(0.1)).toBe(0); // morning, out
     for (let i = 0; i < 24; i++) {
       const a = starAlpha(i / 24);
       expect(a).toBeGreaterThanOrEqual(0);
