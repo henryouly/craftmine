@@ -24,6 +24,7 @@ import {
   sunOrbitAngle,
   timeGlyph,
 } from './world/daynight';
+import { createSky } from './world/sky';
 
 export const REACH = 8;
 export const REPEAT_MS = 200;
@@ -211,6 +212,9 @@ export async function startGame(canvas: HTMLCanvasElement): Promise<World> {
   );
   highlight.visible = false;
   scene.add(highlight);
+
+  // Visible sun + moon sprites and night stars.
+  const sky = createSky(scene);
 
   const w: World = {
     scene,
@@ -430,6 +434,7 @@ export async function startGame(canvas: HTMLCanvasElement): Promise<World> {
       hemi.intensity = s.hemiIntensity;
       bg.setRGB(s.sky[0] / 255, s.sky[1] / 255, s.sky[2] / 255);
       fog.color.copy(bg);
+      sky.update(timeOfDay);
     }
 
     // Apply any pending chunk remeshes (no-ops until edits exist).

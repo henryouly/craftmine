@@ -36,6 +36,17 @@ export function daylight(t: number): number {
   return Math.min(1, Math.max(0, e * 1.5 + 0.25));
 }
 
+/** Moon elevation: opposite the sun, +1 at midnight. */
+export function moonElevation(t: number): number {
+  return -sunElevation(t);
+}
+
+/** Star visibility 0..1: fully in only at real night. */
+export function starAlpha(t: number): number {
+  const a = 1 - daylight(t) * 1.6;
+  return Math.min(1, Math.max(0, a));
+}
+
 export type RGB = [number, number, number];
 
 /**
