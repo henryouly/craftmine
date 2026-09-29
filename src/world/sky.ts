@@ -6,7 +6,7 @@ import { moonElevation, starAlpha, sunElevation, sunOrbitAngle } from './daynigh
 const CENTER_X = 64;
 const CENTER_Z = 64;
 const RADIUS = 400;
-const STAR_COUNT = 800;
+const STAR_COUNT = 1000;
 
 export interface SkyVisuals {
   update: (t: number) => void;
@@ -27,11 +27,13 @@ export function createSky(scene: THREE.Scene): SkyVisuals {
 
   const positions = new Float32Array(STAR_COUNT * 3);
   for (let i = 0; i < STAR_COUNT; i++) {
-    // Random point on the upper dome, relative to the group origin.
+    // Full sphere (vanilla-like): rotation keeps coverage complete, and the
+    // terrain occludes the below-horizon half. Upper-dome-only left half
+    // the sky empty once the field tilted.
     const u = Math.random();
     const v = Math.random();
     const theta = 2 * Math.PI * u;
-    const y = 0.05 + 0.95 * v;
+    const y = 2 * v - 1;
     const r = Math.sqrt(Math.max(0, 1 - y * y));
     positions[i * 3] = Math.cos(theta) * r * RADIUS;
     positions[i * 3 + 1] = y * RADIUS;
