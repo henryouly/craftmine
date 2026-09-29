@@ -21,6 +21,7 @@ import {
   formatTime,
   normalizeTime,
   sampleDayNight,
+  sunOrbitAngle,
   timeGlyph,
 } from './world/daynight';
 
@@ -415,8 +416,9 @@ export async function startGame(canvas: HTMLCanvasElement): Promise<World> {
     if (!cyclePaused) timeOfDay = advanceTime(timeOfDay, dt * 1000);
     {
       const s = sampleDayNight(timeOfDay);
-      // π/2 phase: sunrise east-horizon, noon overhead, sunset west-horizon.
-      const orbit = (timeOfDay - 0.25) * Math.PI * 2 + Math.PI / 2;
+      // Eased orbit: lingers at rise/set, sweeps fast at noon/midnight.
+      // sunOrbitAngle(t) = 0 east-horizon, π/2 overhead, π west-horizon.
+      const orbit = sunOrbitAngle(timeOfDay);
       sun.position.set(
         64 + Math.cos(orbit) * 90,
         // Clamp above the horizon: at night the dim light reads as moonlight.

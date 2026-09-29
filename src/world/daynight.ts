@@ -1,6 +1,6 @@
 /** Day/night cycle: pure time-of-day sampler (no Three.js dependency). */
 
-export const DAY_LENGTH_MS = 600_000; // 10-minute MC-like cycle
+export const DAY_LENGTH_MS = 1_200_000; // 20-minute MC cycle
 
 /** timeOfDay in [0,1): 0 = sunrise, 0.25 = noon, 0.5 = sunset, 0.75 = midnight. */
 export function normalizeTime(t: number): number {
@@ -17,6 +17,17 @@ export function advanceTime(t: number, dtMs: number): number {
 /** Sun elevation: +1 at noon, -1 at midnight, 0 at rise/set. */
 export function sunElevation(t: number): number {
   return Math.cos((normalizeTime(t) - 0.25) * Math.PI * 2);
+}
+
+/**
+ * Eased sun orbit angle (radians) for positioning the sun.
+ * Wiki: the sky moves faster at noon/midnight, slower at rise/set.
+ * Warp: φ = θ − A·sin(2θ) with A = 0.12, so dφ/dθ peaks where
+ * |elev| = 1 and dips where elev = 0. θ = 0 is sunrise, π/2 noon.
+ */
+export function sunOrbitAngle(t: number): number {
+  const theta = normalizeTime(t) * Math.PI * 2;
+  return theta - 0.12 * Math.sin(2 * theta);
 }
 
 /** Daylight factor 0..1, with a soft band around the horizon. */

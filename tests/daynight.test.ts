@@ -7,13 +7,14 @@ import {
   sampleDayNight,
   skyColor,
   sunElevation,
+  sunOrbitAngle,
 } from '../src/world/daynight';
 
 describe('daynight', () => {
   it('normalizes and wraps', () => {
     expect(normalizeTime(1.25)).toBeCloseTo(0.25);
     expect(normalizeTime(-0.1)).toBeCloseTo(0.9);
-    expect(advanceTime(0.9, 600_000 * 0.2)).toBeCloseTo(0.1);
+    expect(advanceTime(0.9, 1_200_000 * 0.2)).toBeCloseTo(0.1);
     expect(advanceTime(0.5, -100)).toBe(0.5);
   });
 
@@ -53,5 +54,18 @@ describe('daynight', () => {
     expect(formatTime(0.25)).toBe('12:00');
     expect(formatTime(0.5)).toBe('18:00');
     expect(formatTime(0.75)).toBe('00:00');
+  });
+
+  it('eased orbit hits cardinal points and moves faster at noon/midnight', () => {
+    expect(sunOrbitAngle(0)).toBeCloseTo(0);
+    expect(sunOrbitAngle(0.25)).toBeCloseTo(Math.PI / 2);
+    expect(sunOrbitAngle(0.5)).toBeCloseTo(Math.PI);
+    // Numerical angular speed: faster at noon/midnight, slower at rise/set.
+    const speed = (t: number): number => {
+      const h = 0.0005;
+      return (sunOrbitAngle(t + h) - sunOrbitAngle(t - h)) / (2 * h);
+    };
+    expect(speed(0.25)).toBeGreaterThan(speed(0));
+    expect(speed(0.75)).toBeGreaterThan(speed(0.5));
   });
 });
