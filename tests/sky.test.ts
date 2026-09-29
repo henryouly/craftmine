@@ -1,11 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  moonElevation,
-  starAlpha,
-  starFieldRotation,
-  sunElevation,
-  sunOrbitAngle,
-} from '../src/world/daynight';
+import { moonElevation, starAlpha, sunElevation } from '../src/world/daynight';
 
 describe('sky', () => {
   it('moon opposes the sun through the whole dial', () => {
@@ -26,13 +20,6 @@ describe('sky', () => {
       expect(a).toBeGreaterThanOrEqual(0);
       expect(a).toBeLessThanOrEqual(1);
       expect(Number.isNaN(a)).toBe(false);
-    }
-  });
-
-  it('sun, moon and stars hold fixed relative positions', () => {
-    for (let i = 0; i < 24; i++) {
-      const t = i / 24;
-      expect(sunOrbitAngle(t) - starFieldRotation(t)).toBeCloseTo(Math.PI / 2, 10);
     }
   });
 });

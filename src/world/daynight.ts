@@ -30,15 +30,6 @@ export function sunOrbitAngle(t: number): number {
   return theta - 0.12 * Math.sin(2 * theta);
 }
 
-/**
- * Star-field rotation (radians). Wiki: sun, moon and stars hold fixed
- * relative positions, so the field co-rotates rigidly with the sun:
- * sunOrbitAngle(t) − starFieldRotation(t) is constant (π/2).
- */
-export function starFieldRotation(t: number): number {
-  return sunOrbitAngle(t) - Math.PI / 2;
-}
-
 /** Daylight factor 0..1, with a soft band around the horizon. */
 export function daylight(t: number): number {
   const e = sunElevation(t);
