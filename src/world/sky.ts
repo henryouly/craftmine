@@ -1,7 +1,7 @@
 /** Visible sun + full moon sprites and night stars. No lighting changes. */
 
 import * as THREE from 'three';
-import { moonElevation, starAlpha, sunElevation, sunOrbitAngle } from './daynight';
+import { moonElevation, starAlpha, starFieldRotation, sunElevation, sunOrbitAngle } from './daynight';
 
 const CENTER_X = 64;
 const CENTER_Z = 64;
@@ -74,8 +74,8 @@ export function createSky(scene: THREE.Scene): SkyVisuals {
       sun.visible = sunElevation(t) > -0.05;
       moon.visible = moonElevation(t) > -0.05;
       starMat.opacity = starAlpha(t);
-      // Wheel the star field with the sky (sun rises east, sets west).
-      stars.rotation.z = Math.PI / 2 - orbit;
+      // Rigid sky: field co-rotates with sun/moon (fixed relative positions).
+      stars.rotation.z = starFieldRotation(t);
     },
   };
 }
